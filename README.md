@@ -1,7 +1,7 @@
 Emscripten WebAssembly crt1 support
 ===================================
 
-C and C++ programs can require doing a lot of work in-between calling
+C and C++ programs can require a lot of work be done between calling
 `execve()` on a binary and when that program's `main()` method is
 invoked.  This could involve running functions marked with gcc's
 `__attribute__((constructor))` syntax, as well as functions to perform
@@ -16,9 +16,12 @@ functions:
 - `fini()` that prints a message after main
 
 When this file is compiled to an executable and run, the `_start`
-symbol is called (not `main()` directly).  `_start` jumps to
+symbol is called (not `main()` directly), which is a stub
+automatically included by the C compiler.  `_start` jumps to
 `_libc_start_main`, which takes care of calling initializers (like our
 `init()`), invoking `main()`, and finally calling destructors.
+
+You can see this in action by running `make` in this repo.
 
 Unfortunately, WebAssembly binaries compiled with Emscripten do not
 have `_start` or `_libc_start_main` functions -- the customized
@@ -40,6 +43,10 @@ function ensureInitRuntime() {
   callRuntimeCallbacks(__ATINIT__);
 }
 ```
+
+Where `callRuntimeCallbacks` just iterates over the list of objects in
+`__ATINIT__`, calling one after the other.  Emscripten also seems to
+ignore destructors, a bug in their default configuration IMO.
 
 We would like to push this functionality into the WebAssembly binary
 so that we can have a single JavaScript wrapper that is able to run
